@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft, MapPin, Calendar, User, ImageIcon } from 'lucide-react'
 import { format } from 'date-fns'
 import { ClaimActions } from '@/components/claim-actions'
+import { RemoveItemButton } from '@/components/remove-item-button'
 
 interface ClaimDetailPageProps {
   params: Promise<{ id: string }>
@@ -39,6 +40,12 @@ export default async function ClaimDetailPage({ params }: ClaimDetailPageProps) 
     .from('profiles')
     .select('username, student_id')
     .eq('id', claim.claimant_id)
+    .maybeSingle()
+
+  const { data: reporterProfile } = await supabase
+    .from('profiles')
+    .select('username, student_id')
+    .eq('id', claim.items?.reporter_id)
     .maybeSingle()
 
   const statusColors: Record<string, string> = {
@@ -135,6 +142,9 @@ export default async function ClaimDetailPage({ params }: ClaimDetailPageProps) 
               <p className="text-xs text-muted-foreground">
                 Submitted {format(new Date(claim.created_at), 'MMMM d, yyyy h:mm a')}
               </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Reported by: {reporterProfile?.username || 'Unknown'}
+              </p>
             </CardContent>
           </Card>
 
@@ -151,6 +161,17 @@ export default async function ClaimDetailPage({ params }: ClaimDetailPageProps) 
 
           {claim.status === 'pending' && (
             <ClaimActions claimId={claim.id} itemId={claim.items?.id} userId={claim.claimant_id} />
+          )}
+
+          {claim.status === 'approved' && claim.items?.id && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Item Removal</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <RemoveItemButton itemId={claim.items.id} label="Remove Item" className="w-full border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground" />
+              </CardContent>
+            </Card>
           )}
 
           {claim.rejection_reason && (

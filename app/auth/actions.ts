@@ -3,11 +3,19 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
+function isBinusEmail(email: string) {
+  return email.trim().toLowerCase().endsWith('@binus.ac.id')
+}
+
 export async function login(formData: FormData) {
   const supabase = await createClient()
 
-  const email = formData.get('email') as string
+  const email = (formData.get('email') as string || '').trim()
   const password = formData.get('password') as string
+
+  if (!isBinusEmail(email)) {
+    return { error: 'Please sign in using your @binus.ac.id email address.' }
+  }
 
   const { error } = await supabase.auth.signInWithPassword({
     email,
@@ -38,10 +46,14 @@ export async function login(formData: FormData) {
 export async function signup(formData: FormData) {
   const supabase = await createClient()
 
-  const email = formData.get('email') as string
+  const email = (formData.get('email') as string || '').trim()
   const password = formData.get('password') as string
   const fullName = formData.get('fullName') as string
   const studentId = formData.get('studentId') as string
+
+  if (!isBinusEmail(email)) {
+    return { error: 'Please register using your @binus.ac.id email address.' }
+  }
 
   const { error } = await supabase.auth.signUp({
     email,

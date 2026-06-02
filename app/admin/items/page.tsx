@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/select'
 import { Package, ArrowRight, ImageIcon } from 'lucide-react'
 import { format } from 'date-fns'
+import { RemoveItemButton } from '@/components/remove-item-button'
 
 interface ItemsPageProps {
   searchParams: Promise<{ status?: string }>
@@ -28,16 +29,37 @@ export default async function AdminItemsPage({ searchParams }: ItemsPageProps) {
     .select(`
       *,
       categories (name),
-      item_photos (photo_url),
-      profiles (username)
+      item_photos (photo_url)
     `)
     .order('created_at', { ascending: false })
 
   if (params.status && params.status !== 'all') {
     query = query.eq('status', params.status)
+  } else {
+    query = query.neq('status', 'claimed')
   }
 
-  const { data: items } = await query
+  const { data: items, error } = await query
+
+  const reporterIds = items?.map((item) => item.reporter_id) || []
+  const { data: reporterProfiles } = await supabase
+    .from('profiles')
+    .select('id, username')
+    .in('id', reporterIds)
+
+  const reporterMap = new Map(reporterProfiles?.map((profile) => [profile.id, profile]) || [])
+
+  const { data: claims } = await supabase
+    .from('claims')
+    .select('id, item_id, status, created_at')
+    .order('created_at', { ascending: false })
+
+  const latestClaimMap = new Map<string, { id: string; status: string; created_at: string }>()
+  claims?.forEach((claim) => {
+    if (!latestClaimMap.has(claim.item_id)) {
+      latestClaimMap.set(claim.item_id, claim)
+    }
+  })
 
   const statusColors: Record<string, string> = {
     active: 'bg-success/10 text-success border-success/20',
@@ -77,13 +99,20 @@ export default async function AdminItemsPage({ searchParams }: ItemsPageProps) {
           <EmptyMedia variant="icon"><Package /></EmptyMedia>
           <EmptyHeader>
             <EmptyTitle>No items found</EmptyTitle>
-            <EmptyDescription>Items will appear here when they are reported.</EmptyDescription>
+            <EmptyDescription>
+              {error ? (
+                <>Error loading items: {error.message || JSON.stringify(error)}</>
+              ) : (
+                'Items will appear here when they are reported and have not been claimed yet.'
+              )}
+            </EmptyDescription>
           </EmptyHeader>
         </Empty>
       ) : (
         <div className="space-y-4">
           {items.map((item) => {
             const photo = item.item_photos?.[0]
+            const latestClaim = latestClaimMap.get(item.id)
 
             return (
               <Card key={item.id}>
@@ -111,8 +140,13 @@ export default async function AdminItemsPage({ searchParams }: ItemsPageProps) {
                             {item.name}
                           </h3>
                           <p className="text-sm text-muted-foreground">
-                            {item.categories?.name} &middot; Reported by {item.profiles?.username}
+                            {item.categories?.name} &middot; Reported by {reporterMap.get(item.reporter_id)?.username || 'Unknown'}
                           </p>
+                          {latestClaim && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Latest claim: <span className="capitalize">{latestClaim.status}</span>
+                            </p>
+                          )}
                         </div>
                         <Badge 
                           variant="outline" 
@@ -131,11 +165,16 @@ export default async function AdminItemsPage({ searchParams }: ItemsPageProps) {
                       </p>
                     </div>
 
-                    <Link href={`/admin/items/${item.id}`} className="flex-shrink-0 self-center">
-                      <Button variant="outline" size="sm">
-                        Manage <ArrowRight className="w-4 h-4 ml-1" />
-                      </Button>
-                    </Link>
+                    <div className="flex flex-col gap-2 flex-shrink-0 self-center">
+                      <Link href={`/admin/items/${item.id}`}>
+                        <Button variant="outline" size="sm" className="w-full">
+                          Manage <ArrowRight className="w-4 h-4 ml-1" />
+                        </Button>
+                      </Link>
+                      {item.status === 'approved' && (
+                        <RemoveItemButton itemId={item.id} label="Remove Item" className="w-full border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground" />
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>

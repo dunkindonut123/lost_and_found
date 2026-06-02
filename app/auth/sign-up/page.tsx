@@ -86,12 +86,18 @@ export default function SignUpPage() {
                     id="email"
                     name="email"
                     type="email"
+                    pattern=".+@binus\.ac\.id"
+                    title="Use your @binus.ac.id email address"
                     placeholder="you@university.edu"
                     required
                     disabled={isLoading}
                     className="bg-secondary/60 border-border/50 hover:border-border/70 focus:border-primary/70 transition-colors"
                   />
                 </Field>
+
+                <p className="text-xs text-muted-foreground -mt-2">
+                  Registration is limited to @binus.ac.id email addresses.
+                </p>
 
                 <Field>
                   <FieldLabel htmlFor="password">Password</FieldLabel>

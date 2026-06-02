@@ -62,12 +62,18 @@ export default function LoginPage() {
                     id="email"
                     name="email"
                     type="email"
+                    pattern=".+@binus\.ac\.id"
+                    title="Use your @binus.ac.id email address"
                     placeholder="you@university.edu"
                     required
                     disabled={isLoading}
                     className="bg-secondary/60 border-border/50 hover:border-border/70 focus:border-primary/70 transition-colors"
                   />
                 </Field>
+
+                <p className="text-xs text-muted-foreground -mt-2">
+                  Sign in with your @binus.ac.id email only.
+                </p>
 
                 <Field>
                   <FieldLabel htmlFor="password">Password</FieldLabel>

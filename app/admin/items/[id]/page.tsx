@@ -22,8 +22,7 @@ export default async function AdminItemDetailPage({ params }: ItemDetailPageProp
     .select(`
       *,
       categories (name),
-      item_photos (id, photo_url),
-      profiles (username, student_id)
+      item_photos (id, photo_url)
     `)
     .eq('id', id)
     .single()
@@ -32,15 +31,29 @@ export default async function AdminItemDetailPage({ params }: ItemDetailPageProp
     notFound()
   }
 
+  const { data: reporterProfile } = await supabase
+    .from('profiles')
+    .select('username, student_id')
+    .eq('id', item.reporter_id)
+    .maybeSingle()
+
   // Get claims for this item
   const { data: claims } = await supabase
     .from('claims')
     .select(`
       *,
-      profiles (username, student_id)
+      item_id
     `)
     .eq('item_id', id)
     .order('created_at', { ascending: false })
+
+  const claimantIds = claims?.map((claim) => claim.claimant_id) || []
+  const { data: claimProfiles } = await supabase
+    .from('profiles')
+    .select('id, username, student_id')
+    .in('id', claimantIds)
+
+  const claimProfileMap = new Map(claimProfiles?.map((profile) => [profile.id, profile]) || [])
 
   const statusColors: Record<string, string> = {
     active: 'bg-success/10 text-success border-success/20',
@@ -136,7 +149,7 @@ export default async function AdminItemDetailPage({ params }: ItemDetailPageProp
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <User className="w-4 h-4 text-muted-foreground" />
-                  <span>Reported by {item.profiles?.username}</span>
+                  <span>Reported by {reporterProfile?.username || 'Unknown'}</span>
                 </div>
               </div>
             </CardContent>
@@ -162,7 +175,7 @@ export default async function AdminItemDetailPage({ params }: ItemDetailPageProp
                 >
                   <div>
                     <p className="font-medium text-sm">
-                      {claim.profiles?.username} ({claim.profiles?.student_id || 'N/A'})
+                      {claimProfileMap.get(claim.claimant_id)?.username || 'Unknown'} ({claimProfileMap.get(claim.claimant_id)?.student_id || 'N/A'})
                     </p>
                     <p className="text-xs text-muted-foreground line-clamp-1">
                       {claim.description}

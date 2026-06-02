@@ -41,13 +41,15 @@ export function ClaimActions({ claimId, itemId, userId }: ClaimActionsProps) {
 
       // If approved, update item status
       if (action === 'approved') {
-        await supabase
+        const { error: itemError } = await supabase
           .from('items')
           .update({ status: 'claimed' })
           .eq('id', itemId)
 
+        if (itemError) throw itemError
+
         // Reject other pending claims for this item
-        await supabase
+        const { error: otherClaimsError } = await supabase
           .from('claims')
           .update({ 
             status: 'rejected', 
@@ -56,24 +58,45 @@ export function ClaimActions({ claimId, itemId, userId }: ClaimActionsProps) {
           .eq('item_id', itemId)
           .eq('status', 'pending')
           .neq('id', claimId)
+
+        if (otherClaimsError) throw otherClaimsError
       }
 
       // Create notification for the claimant
-      await supabase.from('notifications').insert({
+      const { error: notifError } = await supabase.from('notifications').insert({
         user_id: userId,
+        claim_id: claimId,
+        item_id: itemId,
         type: action === 'approved' ? 'claim_approved' : 'claim_rejected',
+        title: action === 'approved' ? 'Claim approved' : 'Claim rejected',
         message: action === 'approved'
           ? 'Your claim has been approved! Please visit the Lost & Found office to collect your item.'
           : `Your claim has been rejected.${adminNotes ? ` Reason: ${adminNotes}` : ''}`,
-        item_id: itemId,
       })
+
+      if (notifError) throw notifError
 
       router.push('/admin/claims')
       router.refresh()
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to process claim'
+      // Try to extract useful info from Supabase error objects
+      let errorMessage = 'Failed to process claim'
+      try {
+        if (err instanceof Error && err.message) {
+          errorMessage = err.message
+        } else if (err && typeof err === 'object') {
+          // Supabase error objects often have `message` and `details`
+          // Use JSON.stringify as a fallback to surface object contents
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const e: any = err
+          errorMessage = e.message || e.error || JSON.stringify(e)
+        }
+      } catch (e) {
+        // ignore parse errors
+      }
+
       setError(errorMessage)
-      console.error('Error processing claim:', err)
+      console.error('Error processing claim:', err, 'extractedMessage:', errorMessage)
       setIsLoading(false)
     }
   }

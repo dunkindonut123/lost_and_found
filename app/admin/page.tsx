@@ -12,12 +12,12 @@ export default async function AdminDashboardPage() {
   // Get counts
   const [
     { count: totalItems },
-    { count: availableItems },
+    { count: activeItems },
     { count: pendingClaims },
     { count: approvedClaims },
   ] = await Promise.all([
     supabase.from('items').select('*', { count: 'exact', head: true }),
-    supabase.from('items').select('*', { count: 'exact', head: true }).eq('status', 'available'),
+    supabase.from('items').select('*', { count: 'exact', head: true }).eq('status', 'active'),
     supabase.from('claims').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
     supabase.from('claims').select('*', { count: 'exact', head: true }).eq('status', 'approved'),
   ])
@@ -27,16 +27,23 @@ export default async function AdminDashboardPage() {
     .from('claims')
     .select(`
       *,
-      items (title),
-      profiles!claims_claimant_id_fkey (full_name)
+      items (name)
     `)
     .eq('status', 'pending')
     .order('created_at', { ascending: false })
     .limit(5)
 
+  const recentClaimantIds = recentClaims?.map((claim) => claim.claimant_id) || []
+  const { data: recentProfiles } = await supabase
+    .from('profiles')
+    .select('id, username')
+    .in('id', recentClaimantIds)
+
+  const recentProfileMap = new Map(recentProfiles?.map((profile) => [profile.id, profile]) || [])
+
   const stats = [
     { label: 'Total Items', value: totalItems || 0, icon: Package, color: 'text-primary' },
-    { label: 'Available', value: availableItems || 0, icon: CheckCircle, color: 'text-success' },
+    { label: 'Active', value: activeItems || 0, icon: CheckCircle, color: 'text-success' },
     { label: 'Pending Claims', value: pendingClaims || 0, icon: Clock, color: 'text-warning' },
     { label: 'Approved Claims', value: approvedClaims || 0, icon: ClipboardList, color: 'text-muted-foreground' },
   ]
@@ -96,10 +103,10 @@ export default async function AdminDashboardPage() {
                   >
                     <div className="min-w-0">
                       <p className="font-medium text-sm truncate">
-                        {claim.items?.title}
+                        {claim.items?.name}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        by {claim.profiles?.full_name} &middot;{' '}
+                        by {recentProfileMap.get(claim.claimant_id)?.username || 'Unknown'} &middot;{' '}
                         {formatDistanceToNow(new Date(claim.created_at), { addSuffix: true })}
                       </p>
                     </div>

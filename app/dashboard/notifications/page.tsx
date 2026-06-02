@@ -18,10 +18,11 @@ export default async function NotificationsPage() {
     .eq('user_id', user?.id)
     .order('created_at', { ascending: false })
 
-  const getIcon = (title: string) => {
-    if (title.toLowerCase().includes('approved')) {
+  const getIcon = (title?: string | null) => {
+    const t = (title || '').toLowerCase()
+    if (t.includes('approved')) {
       return <CheckCircle className="w-5 h-5 text-success" />
-    } else if (title.toLowerCase().includes('rejected')) {
+    } else if (t.includes('rejected')) {
       return <XCircle className="w-5 h-5 text-destructive" />
     }
     return <Info className="w-5 h-5 text-primary" />
@@ -64,7 +65,7 @@ export default async function NotificationsPage() {
                     {getIcon(notification.title)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm text-foreground">{notification.title}</p>
+                    <p className="font-medium text-sm text-foreground">{notification.title ?? (notification.type || 'Notification')}</p>
                     <p className="text-sm text-muted-foreground">
                       {notification.message}
                     </p>

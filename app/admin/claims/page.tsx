@@ -22,6 +22,15 @@ interface ClaimsPageProps {
 export default async function AdminClaimsPage({ searchParams }: ClaimsPageProps) {
   const params = await searchParams
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  // Check if current user is an admin (useful for diagnosing RLS issues)
+  const { data: adminCheck } = await supabase
+    .from('admins')
+    .select('id')
+    .eq('user_id', user?.id)
+    .maybeSingle()
+  const isAdmin = !!adminCheck
   
   let query = supabase
     .from('claims')
@@ -87,7 +96,17 @@ export default async function AdminClaimsPage({ searchParams }: ClaimsPageProps)
           <EmptyMedia variant="icon"><ClipboardList /></EmptyMedia>
           <EmptyHeader>
             <EmptyTitle>No claims found</EmptyTitle>
-            <EmptyDescription>Claims will appear here when students submit them.</EmptyDescription>
+            <EmptyDescription>
+              {error ? (
+                <>Error loading claims: {error.message || JSON.stringify(error)}</>
+              ) : isAdmin ? (
+                'Claims will appear here when students submit them.'
+              ) : (
+                <>
+                  You don't appear to be an admin. If you should have admin access, add your user to the <code>public.admins</code> table or check RLS policies.
+                </>
+              )}
+            </EmptyDescription>
           </EmptyHeader>
         </Empty>
       ) : (
