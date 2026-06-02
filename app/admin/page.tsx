@@ -137,12 +137,6 @@ export default async function AdminDashboardPage() {
                 Review Claims
               </Link>
             </Button>
-            <Button asChild className="w-full justify-start" variant="outline">
-              <Link href="/dashboard">
-                <ArrowRight className="w-4 h-4 mr-2" />
-                Switch to Student View
-              </Link>
-            </Button>
           </CardContent>
         </Card>
       </div>

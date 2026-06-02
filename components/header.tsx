@@ -115,17 +115,6 @@ export function Header({ user, notificationCount = 0, isAdmin = false }: HeaderP
                   <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
                 </div>
                 <DropdownMenuSeparator />
-                {isAdmin && (
-                  <>
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard" className="cursor-pointer">
-                        <Home className="w-4 h-4 mr-2" />
-                        Student View
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                  </>
-                )}
                 <DropdownMenuItem 
                   className="text-destructive cursor-pointer focus:text-destructive"
                   onClick={() => signout()}
